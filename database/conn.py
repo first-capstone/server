@@ -52,10 +52,10 @@ class DBObject(object):
     """
     def __init__(self):
         user_info = load_postgresql_user_info()
-        DB_URL = f'''postgresql://{user_info["user"]}:
-        {user_info["password"]}@{user_info["host"]}:{user_info["port"]}/
-        {user_info["db"]}'''
-        self.engine = create_engine(DB_URL)
+        DB_URL = f'''postgresql://{user_info["user"]}:\
+            {user_info["password"]}@{user_info["host"]}:{user_info["port"]}/\
+            {user_info["db"]}'''
+        self.engine = create_engine(DB_URL.replace(" ", ""))
         self.session = sessionmaker(bind=self.engine)()
         print("데이터베이스 연결에 성공하였습니다.")
 
