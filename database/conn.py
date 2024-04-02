@@ -57,7 +57,6 @@ class DBObject(object):
             {user_info["db"]}'''
         self.engine = create_engine(DB_URL.replace(" ", ""))
         self.session = sessionmaker(bind=self.engine)()
-        print("데이터베이스 연결에 성공하였습니다.")
 
     def __del__(self):
         self.engine.dispose()
