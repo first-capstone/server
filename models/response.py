@@ -1,4 +1,4 @@
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 
 
 class ResponseStatusCode:
@@ -30,3 +30,7 @@ class ResponseModel:
                 show_dict[key] = kwargs[key]
 
         return JSONResponse(show_dict, status_code=status_code)
+
+    @staticmethod
+    def show_image(image_path: str):
+        return FileResponse(path=image_path, media_type="image/png")
