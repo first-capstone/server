@@ -1,7 +1,7 @@
-from enum import Enum
 from fastapi.responses import JSONResponse
 
-class ResponseStatusCode(Enum):
+
+class ResponseStatusCode:
     SUCCESS = 200  # 성공
     FAIL = 401  # 실패
     FORBIDDEN = 403  # 접근 권한 없음
@@ -11,18 +11,22 @@ class ResponseStatusCode(Enum):
     ENTITY_ERROR = 422  # 입력 데이터 타입이 잘못됨
     INTERNAL_SERVER_ERROR = 500  # 서버 내부 에러
 
-class ResponseModel(Enum):
+
+class Detail:
+    text: str | None
+
+    def __init__(self, text: str):
+        self.text = text
+
+
+class ResponseModel:
     status_code: int
-    message: str | None = None
-    detail: str | None = None
-    
+
     @staticmethod
-    def show_json(status_code: int, message: str | None = None, detail: str | None = None):
+    def show_json(status_code: int, **kwargs):
         show_dict = {"status_code": status_code}
-        if message:
-            show_dict["message"] = message
-            
-        if detail:
-            show_dict["detail"] = detail
-            
-        return JSONResponse(show_dict, status_code = status_code)
+        for key in kwargs.keys():
+            if kwargs[key]:
+                show_dict[key] = kwargs[key]
+
+        return JSONResponse(show_dict, status_code=status_code)
