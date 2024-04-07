@@ -1,7 +1,8 @@
 from fastapi.responses import JSONResponse, FileResponse
+from enum import Enum
 
 
-class ResponseStatusCode:
+class ResponseStatusCode(Enum):
     SUCCESS = 200  # 성공
     FAIL = 401  # 실패
     FORBIDDEN = 403  # 접근 권한 없음
