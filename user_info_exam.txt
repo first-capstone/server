@@ -3,3 +3,5 @@ password = example_password
 host = localhost
 port = 5432
 db = example_db
+es_host = localhost
+es_port = 9200
