@@ -73,9 +73,9 @@ async def register(model: SignUpModel):
     
     status_code, detail = Account.register(DBObject.instance, model.user_id, model.password, model.nickname, model.email, model.phone, model.s_id )
     if status_code != ResponseStatusCode.SUCCESS:
-        return ResponseModel.show_json(status_code = status_code, message = response_dict[status_code], detail = detail.text)
+        return ResponseModel.show_json(status_code = status_code.value, message = response_dict[status_code], detail = detail.text)
     
-    return ResponseModel.show_json(status_code = status_code, message = response_dict[status_code])
+    return ResponseModel.show_json(status_code = status_code.value, message = response_dict[status_code])
 
 @account_router.post("/login",
 responses={
@@ -245,9 +245,9 @@ async def send_email(email: str):
     
     status_code, result = Account.send_email(session, email)
     if status_code != ResponseStatusCode.SUCCESS:
-        return ResponseModel.show_json(status_code = status_code.value, message = message_dict[status_code], detail = result.text)
+        return ResponseModel.show_json(status_code = status_code.value.value, message = message_dict[status_code], detail = result.text)
 
-    return ResponseModel.show_json(status_code = status_code.value, message = message_dict[status_code])
+    return ResponseModel.show_json(status_code = status_code.value.value, message = message_dict[status_code])
 
 @account_router.post("/email/verify", 
     responses={
@@ -285,6 +285,6 @@ async def verify_email(email: str, verify_code: str):
     
     status_code, result = Account.verify_email_code(session, email, verify_code)
     if status_code != ResponseStatusCode.SUCCESS:
-        return ResponseModel.show_json(status_code = status_code.value, message = message_dict[status_code], detail = result.text)
+        return ResponseModel.show_json(status_code = status_code.value.value, message = message_dict[status_code], detail = result.text)
     
-    return ResponseModel.show_json(status_code = status_code.value, message = message_dict[status_code])
+    return ResponseModel.show_json(status_code = status_code.value.value, message = message_dict[status_code])
