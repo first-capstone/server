@@ -1,17 +1,11 @@
+from models.response import ResponseStatusCode, ResponseModel, Detail
+from models.account import SignUpModel, ForgotPasswordModel
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import APIRouter, Depends
-from typing import Union
-
-#id,pwd:F_bomber
-
-#여긴 임시#
 from database.conn import DBObject
 from models.account import Account
-from models.account import SignUpModel,ForgotPasswordModel
-from fastapi.security import OAuth2PasswordRequestForm
-from models.response import ResponseStatusCode, ResponseModel, Detail
 
 session = {}
-
 
 account_router = APIRouter(
     prefix="/account",
@@ -72,10 +66,11 @@ async def register(model: SignUpModel):
     }
     
     status_code, detail = Account.register(DBObject.instance, model.user_id, model.password, model.nickname, model.email, model.phone, model.s_id )
-    if status_code != ResponseStatusCode.SUCCESS:
-        return ResponseModel.show_json(status_code = status_code, message = response_dict[status_code], detail = detail.text)
     
-    return ResponseModel.show_json(status_code = status_code, message = response_dict[status_code])
+    if status_code != ResponseStatusCode.SUCCESS:
+        return ResponseModel.show_json(status_code = status_code.value, message = response_dict[status_code], detail = detail.text)
+    
+    return ResponseModel.show_json(status_code = status_code.value, message = response_dict[status_code])
 
 @account_router.post("/login",
 responses={
@@ -125,9 +120,9 @@ async def login(model: OAuth2PasswordRequestForm = Depends()):
     status_code, detail = Account.login(DBObject.instance, model.username, model.password)
     
     if isinstance(detail, Detail):
-        return ResponseModel.show_json(status_code, message = response_dict[status_code], detail = detail.text)
+        return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = detail.text)
         
-    return ResponseModel.show_json(status_code, message = response_dict[status_code], token = detail.access_token)
+    return ResponseModel.show_json(status_code.value, message = response_dict[status_code], token = detail.access_token)
 
 
 @account_router.delete("/signout", 
@@ -170,14 +165,14 @@ async def register_out(id: str, password: str):
     result = (ResponseStatusCode.FAIL, "User Not founded")
     status_code, result = Account._load_user_info(DBObject.instance, id = id)
     if status_code != ResponseStatusCode.SUCCESS:
-        return ResponseModel.show_json(status_code, message = response_dict[status_code], detail = detail.text)
+        return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = detail.text)
     
     user = result
     if Account.login(DBObject.instance, id, password)[0] == ResponseStatusCode.SUCCESS:
         result = user.register_out(DBObject.instance)
 
     status_code, detail = result
-    return ResponseModel.show_json(status_code, message = response_dict[status_code], detail = detail)
+    return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = detail)
 
 @account_router.post("/forgot/password",
     responses={
@@ -213,9 +208,9 @@ async def forgot_password(model: ForgotPasswordModel):
 
     status_code, result = Account.forgot_password(DBObject.instance, model.user_id, model.password)
     if status_code != ResponseStatusCode.SUCCESS:
-        return ResponseModel.show_json(status_code, message = response_dict[status_code], detail = result.text)
+        return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
     
-    return ResponseModel.show_json(status_code, message = response_dict[status_code])
+    return ResponseModel.show_json(status_code.value, message = response_dict[status_code])
 
 @account_router.post("/email/send",
     responses={
