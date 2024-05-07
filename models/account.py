@@ -25,15 +25,15 @@ Account = TypeVar("Account", bound="Account")
 
 class IDPWDModel(BaseModel):
     """ 기본적인 ID, Password를 갖는 클래스, 보안을 위해 사용
-    
+
     """
     user_id: str
     password: str
-        
-        
+
+
 class SignUpModel(IDPWDModel):
     """ 유저가 회원가입을 할 때, 보안을 위해 사용되는 클래스
-    
+
     """
     nickname: str
     email: str
@@ -43,34 +43,34 @@ class SignUpModel(IDPWDModel):
 
 class SignoutModel(IDPWDModel):
     """ 유저가 회원탈퇴를 할 때, 보안을 위해 사용되는 클래스
-    
+
     """
 
 
 class LoginModel(IDPWDModel):
     """ 유저가 로그인을 할 때, 보안을 위해 사용되는 클래스
-    
+
     """
-  
+
 
 class ForgotPasswordModel(IDPWDModel):
     """ 유저가 비밀번호를 변경 할 떄, 보안을 위해 사용되는 클래스
-    
+
     """
-    
-    
+
+
 class TokenModel:
     access_token: str
     token_type: str
-    
+
     def __init__(self, a_uuid: str):
         self.access_token = jwt.encode({
                 "sub": a_uuid,
-                "exp": datetime.now() + timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES)
-            }, SECRET_KEY, algorithm = ALGORITHM)
+                "exp": datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            }, SECRET_KEY, algorithm=ALGORITHM)
         self.token_type = TOKEN_TYPE
 
-    
+
 class Account(Base):
     __tablename__ = "account"
 
@@ -306,7 +306,7 @@ class Account(Base):
 
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                          e, e.__traceback__))}""")
+                        e, e.__traceback__))}""")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
         
     @staticmethod
@@ -337,7 +337,7 @@ class Account(Base):
 
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                          e, e.__traceback__))}""")
+                        e, e.__traceback__))}""")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
         
         finally:
