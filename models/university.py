@@ -39,7 +39,7 @@ class University(Base):
     __tablename__ = "university"
 
     u_uuid = Column(UUID(as_uuid=True), nullable=False,
-                         default=uuid.uuid4, primary_key=True)
+                    default=uuid.uuid4, primary_key=True)
     univ_name = Column(String(30), nullable=False)
     link = Column(TEXT, nullable=True, default=None)
     est_type = Column(String(2), nullable=False)
@@ -53,9 +53,9 @@ class University(Base):
         est_type,
         univ_gubun,
         address,
-        logo_path = None,
-        link = None,
-        u_uuid = None
+        logo_path=None,
+        link=None,
+        u_uuid=None
     ):
         self.univ_name = univ_name
         self.est_type = est_type
@@ -83,11 +83,12 @@ class University(Base):
     ) -> Tuple[ResponseStatusCode, List[UniversityNameModel] | Detail]:
         try:
             data = dbo.session.query(University.u_uuid,
-                                     University.address,
-                                     University.univ_name).all()
-            
+                                    University.address,
+                                    University.univ_name).all()
+
             if len(data) == 0:
-                return (ResponseStatusCode.NOT_FOUND, Detail("Data doesn't exist"))
+                return (ResponseStatusCode.NOT_FOUND,
+                        Detail("Data doesn't exist"))
 
             return (ResponseStatusCode.SUCCESS,
                     list(map(lambda x: UniversityNameModel(x).info, data)))
@@ -119,7 +120,7 @@ class University(Base):
 
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                          e, e.__traceback__))}""")
+                        e, e.__traceback__))}""")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
 
     @staticmethod
@@ -131,31 +132,35 @@ class University(Base):
     ) -> Tuple[ResponseStatusCode, List[Dict[str, Any]] | Detail]:
         try:
             data = dbo.session.query(University.u_uuid,
-                                     University.address,
-                                     University.univ_name).filter(
-                                         University.univ_name.like(f"%{search_value}%")).all()
+                                    University.address,
+                                    University.univ_name).filter(
+                                        University.univ_name.like(
+                                            f"%{search_value}%")).all()
 
             if len(data) == 0:
-                return (ResponseStatusCode.NOT_FOUND, Detail("Data doesn't exist"))
+                return (ResponseStatusCode.NOT_FOUND,
+                        Detail("Data doesn't exist"))
 
             return (ResponseStatusCode.SUCCESS,
-                    list(map(lambda x: UniversityNameModel(x).info, data[skip: skip + count])))
+                    list(map(lambda x: UniversityNameModel(x).info,
+                            data[skip: skip + count])))
 
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                          e, e.__traceback__))}""")
+                        e, e.__traceback__))}""")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
 
     def get_logo_path(self) -> Tuple[ResponseStatusCode, str | Detail]:
         try:
             if self.logo_path is None:
-                self.logo_path = f"./images/logos/{self.univ_name.split(' ')[0]}.png"
+                self.logo_path = f"./images/logos/\
+                    {self.univ_name.split(' ')[0]}.png"
 
             return (ResponseStatusCode.SUCCESS, self.logo_path)
 
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                          e, e.__traceback__))}""")
+                        e, e.__traceback__))}""")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
 
     @staticmethod
@@ -165,12 +170,12 @@ class University(Base):
             for img_path in os.listdir(LOGO_ROOT_PATH):
                 path_obj = Path(f"{LOGO_ROOT_PATH}/{img_path}")
                 path_obj.rename(path_obj.with_suffix(".png"))
-                
+
             return (ResponseStatusCode, None)
 
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                          e, e.__traceback__))}""")
+                        e, e.__traceback__))}""")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
 
     @staticmethod
@@ -183,33 +188,31 @@ class University(Base):
                 out.save(f"{LOGO_ROOT_PATH}/{img_path}")
 
             return (ResponseStatusCode, None)
-   
+
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                          e, e.__traceback__))}""")
+                        e, e.__traceback__))}""")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
 
     @staticmethod
-    def _check_image_exist(dbo: DBObject) -> Tuple[ResponseStatusCode, None | Detail]:
+    def _check_image_exist(
+        dbo: DBObject
+    ) -> Tuple[ResponseStatusCode, None | Detail]:
         try:
             LOGO_ROOT_PATH = "./images/logos"
             data = dbo.session.query(University.univ_name).all()[0]
-            
+
             for univ_name in data:
                 if not os.path.exists(f"{LOGO_ROOT_PATH}/{univ_name}.png"):
-                    raise FileNotFoundError(f"University's logo doesn't exist in {LOGO_ROOT_PATH}/{univ_name}.png")
+                    return (ResponseStatusCode.NOT_FOUND,
+                            Detail(str(f"University's logo doesn't exist in \
+                                {LOGO_ROOT_PATH}/{univ_name}.png")))
 
             return (ResponseStatusCode.SUCCESS, None)
 
-        except FileNotFoundError as e:
-            logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                          e, e.__traceback__))}""")
-
-            return (ResponseStatusCode.NOT_FOUND, Detail(str(e)))
-
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                          e, e.__traceback__))}""")
+                        e, e.__traceback__))}""")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
 
     @staticmethod
@@ -237,8 +240,8 @@ class University(Base):
     ) -> Tuple[ResponseStatusCode, List[Dict[str, Any]] | str]:
         try:
             params = {"apiKey": API_KEY, "svcType": "api",
-                      "svcCode": "SCHOOL", "contentType": "json",
-                      "gubun": "univ_list", "perPage": 500}
+                    "svcCode": "SCHOOL", "contentType": "json",
+                    "gubun": "univ_list", "perPage": 500}
 
             response = requests.get(URL, params=params)
 
@@ -251,7 +254,7 @@ class University(Base):
                                             "link": x["link"],
                                             "est_type": x["estType"],
                                             "total": x["totalCount"]},
-                                 data["dataSearch"]["content"])))
+                                data["dataSearch"]["content"])))
 
             else:
                 return (ResponseStatusCode.FAIL,
@@ -288,7 +291,7 @@ class University(Base):
         except IntegrityError:
             return (ResponseStatusCode.CONFLICT,
                     Detail("""Data Already Exist in
-                           University._insert_univ_info"""))
+                        University._insert_univ_info"""))
 
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
@@ -301,7 +304,7 @@ class University(Base):
     @staticmethod
     def _init_univ(
         dbo: DBObject,
-        URL: str, 
+        URL: str,
         API_KEY: str
     ) -> Tuple[ResponseStatusCode, str | None]:
         try:
@@ -316,13 +319,13 @@ class University(Base):
             if int(data[0]["total"]) != len(data):
                 return (ResponseStatusCode.DATA_REQUIRED,
                         Detail("""Total University Count Not Equals in
-                               University._init_univ"""))
+                            University._init_univ"""))
 
             else:
                 result, detail = University._insert_univ_info(dbo, data)
                 if isinstance(detail, Detail):
                     raise Exception(detail.message)
-                
+
                 return (ResponseStatusCode.SUCCESS, None)
 
         except Exception as e:

@@ -25,15 +25,15 @@ Account = TypeVar("Account", bound="Account")
 
 class IDPWDModel(BaseModel):
     """ 기본적인 ID, Password를 갖는 클래스, 보안을 위해 사용
-    
+
     """
     user_id: str
     password: str
-        
-        
+
+
 class SignUpModel(IDPWDModel):
     """ 유저가 회원가입을 할 때, 보안을 위해 사용되는 클래스
-    
+
     """
     nickname: str
     email: str
@@ -43,34 +43,34 @@ class SignUpModel(IDPWDModel):
 
 class SignoutModel(IDPWDModel):
     """ 유저가 회원탈퇴를 할 때, 보안을 위해 사용되는 클래스
-    
+
     """
 
 
 class LoginModel(IDPWDModel):
     """ 유저가 로그인을 할 때, 보안을 위해 사용되는 클래스
-    
+
     """
-  
+
 
 class ForgotPasswordModel(IDPWDModel):
     """ 유저가 비밀번호를 변경 할 떄, 보안을 위해 사용되는 클래스
-    
+
     """
-    
-    
+
+
 class TokenModel:
     access_token: str
     token_type: str
-    
+
     def __init__(self, a_uuid: str):
         self.access_token = jwt.encode({
                 "sub": a_uuid,
-                "exp": datetime.now() + timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES)
-            }, SECRET_KEY, algorithm = ALGORITHM)
+                "exp": datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            }, SECRET_KEY, algorithm=ALGORITHM)
         self.token_type = TOKEN_TYPE
 
-    
+
 class Account(Base):
     __tablename__ = "account"
 
@@ -148,6 +148,8 @@ class Account(Base):
         try:
             status_code, result = Account._load_user_info(dbo, id = user_id)
             if status_code != ResponseStatusCode.SUCCESS:
+                if status_code == ResponseStatusCode.NOT_FOUND:
+                    status_code = ResponseStatusCode.FAIL
                 return (status_code, result)
             
             account = result
@@ -160,7 +162,7 @@ class Account(Base):
                 else:
                     return (ResponseStatusCode.FAIL, Detail("password is not corrected"))
             
-            return (ResponseStatusCode.NOT_FOUND, Detail(f"{account.id} not founded in account"))            
+            return (ResponseStatusCode.FAIL, Detail(f"{account.id} not founded in account"))            
         
 
         except Exception as e:
@@ -271,75 +273,3 @@ class Account(Base):
         except Exception as e:
             logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
-
-    @staticmethod
-    def send_email(session: Dict[str, Any], email: str) -> Tuple[ResponseStatusCode, None | Detail]:
-        """
-        Parameters:
-            session (Dict[str, Any]): 세션이 존재하는지 확인하기 위한 Session. \n
-            email (str): 인증코드를 보낼 이메일 주소. \n
-            
-        Returns:
-            MACResult.SUCCESS: 인증 코드를 성공적으로 전송 \n
-            MACResult.FAIL: 인증 코드를 보내는데 실패 \n
-            MACResult.INTERNAL_SERVER_ERROR: 서버 내부 에러 발생 \n
-        """
-        try:
-            message = MIMEMultipart("alternative")
-            message["Subject"] = "Uni On 인증번호 요청"
-            message["From"] = SENDER
-            message["To"] = email
-            session[f"{email}-verify-code"] = str(randint(10 ** 4, 10 ** 6 - 1)).rjust(6, '0')
-
-            text = f"<html><body><div>인증 코드: {session[f'{email}-verify-code']}</div></body></html>"
-            part2 = MIMEText(text, "html")
-
-            message.attach(part2)
-
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                server.login(SENDER, APP_PASSWORD)
-                server.sendmail(SENDER, email, message.as_string())
-            
-            session[f"{email}-start-time"] = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-
-            return (ResponseStatusCode.SUCCESS, None)
-
-        except Exception as e:
-            logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                          e, e.__traceback__))}""")
-            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
-        
-    @staticmethod
-    def verify_email_code(session: Dict[str, Any], email: str, verify_code: str) -> Tuple[ResponseStatusCode, None | Detail]:
-        """
-        Parameters:
-            session (Dict[str, Any]): 세션이 존재하는지 확인하기 위한 Session. \n
-            email (str): 인증코드를 보낼 이메일 주소. \n
-            verify_code (str): 인증코드 \n
-            
-        Returns:
-            MACResult.SUCCESS: 인증 성공 \n
-            MACResult.FAIL: 인증 실패 \n
-            MACResult.TIME_OUT: 인증 시간 초과 \n
-            MACResult.INTERNAL_SERVER_ERROR: 서버 내부 에러 발생 \n
-        """
-        try:
-            if (datetime.now() - datetime.strptime(session[f"{email}-start-time"], "%Y/%m/%d %H:%M:%S")).total_seconds() >= 300:
-                return (ResponseStatusCode.TIME_OUT, Detail("request time out"))
-            
-            if session[f"{email}-verify-code"] is None:
-                return (ResponseStatusCode.NOT_FOUND, Detail("Email Not Found"))
-            
-            elif verify_code == session[f"{email}-verify-code"]:
-                return (ResponseStatusCode.SUCCESS, None)
-            
-            return (ResponseStatusCode.FAIL, Detail("FAIL"))
-
-        except Exception as e:
-            logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                          e, e.__traceback__))}""")
-            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
-        
-        finally:
-            del session[f"{email}-verify-code"]
-            del session[f"{email}-start-time"]
