@@ -148,6 +148,8 @@ class Account(Base):
         try:
             status_code, result = Account._load_user_info(dbo, id = user_id)
             if status_code != ResponseStatusCode.SUCCESS:
+                if status_code == ResponseStatusCode.NOT_FOUND:
+                    status_code = ResponseStatusCode.FAIL
                 return (status_code, result)
             
             account = result
@@ -160,7 +162,7 @@ class Account(Base):
                 else:
                     return (ResponseStatusCode.FAIL, Detail("password is not corrected"))
             
-            return (ResponseStatusCode.NOT_FOUND, Detail(f"{account.id} not founded in account"))            
+            return (ResponseStatusCode.FAIL, Detail(f"{account.id} not founded in account"))            
         
 
         except Exception as e:
