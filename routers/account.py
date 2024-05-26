@@ -257,7 +257,7 @@ async def check_duplicate(parameter: str, data: str):
     }
     
     if parameter not in data_dict.keys():
-            return ResponseModel.show_json(ResponseStatusCode.ENTITY_ERROR, message = "엔티티 전달이 잘못되었습니다.", detail = "Path Parameter Key값은 id, nickname, phone, email 입니다.")
+            return ResponseModel.show_json(ResponseStatusCode.ENTITY_ERROR.value, message = "엔티티 전달이 잘못되었습니다.", detail = "Path Parameter Key값은 id, nickname, phone, email 입니다.")
     
     response_dict = {
         ResponseStatusCode.SUCCESS: f"사용 가능한 {data_dict[parameter]}입니다!",
