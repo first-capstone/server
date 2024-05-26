@@ -1,21 +1,16 @@
 from env.ACCOUNT import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, TOKEN_TYPE
 from sqlalchemy import Column, TEXT, String, DateTime, ForeignKeyConstraint
 from models.response import ResponseStatusCode, Detail
-from typing import TypeVar, Tuple, Optional, Dict, Any
 from utility.checker import is_valid_uuid_format
 from sqlalchemy.dialects.postgresql import UUID
-from email.mime.multipart import MIMEMultipart
-from env.ACCOUNT import SENDER, APP_PASSWORD
-from email.mime.text import MIMEText
+from typing import TypeVar, Tuple, Optional
 from database.conn import DBObject
 from pydantic import BaseModel
 from datetime import timedelta
 from datetime import datetime
 from models.base import Base
-from random import randint
 import traceback
 import logging
-import smtplib
 import bcrypt
 import uuid
 import jwt
