@@ -211,3 +211,73 @@ async def forgot_password(model: ForgotPasswordModel):
         return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
     
     return ResponseModel.show_json(status_code.value, message = response_dict[status_code])
+
+@account_router.post("/duplicate/{parameter}", responses={
+        200: {
+            "description":"데이터가 사용가능할 때 발생합니다.",
+            "content": {
+                "application/json": {
+                    "example": {"status_code": 200, "message": "사용 가능한 정보입니다!"}
+                }
+            }
+        },
+        409: {
+            "description":"데이터가 중복될 때 발생합니다.",
+            "content": {
+                "application/json": {
+                    "example": {"status_code": 409, "message": "이미 사용중인 정보입니다.", "detail": "example_id id already exist"}
+                }
+            }
+        },
+        422: {
+            "description": "Path Parameter가 잘못 전달되었을 때 발생합니다.",
+            "content": {
+                "application/json":{
+                    "example": {"status_code": 422, "message": "엔티티 전달이 잘못되었습니다.", "detail": "Path Parameter Key값은 id, nickname, phone, email 입니다."}
+                }
+            } 
+        },
+        500: {
+            "description":"코드 에러가 있을 때 발생합니다.",
+            "content": {
+                "application/json": {
+                    "example": {"status_code": 500, "message": "서버 내부 에러가 발생하였습니다.", "detail": "Error occured."}
+                }
+            }
+        }
+    },
+    name = "정보 중복 체크"
+)
+async def check_duplicate(parameter: str, data: str):
+    data_dict = {
+        "id": "아이디",
+        "nickname": "닉네임",
+        "phone": "핸드폰 번호",
+        "email": "이메일"
+    }
+    
+    if parameter not in data_dict.keys():
+            return ResponseModel.show_json(ResponseStatusCode.ENTITY_ERROR, message = "엔티티 전달이 잘못되었습니다.", detail = "Path Parameter Key값은 id, nickname, phone, email 입니다.")
+    
+    response_dict = {
+        ResponseStatusCode.SUCCESS: f"사용 가능한 {data_dict[parameter]}입니다!",
+        ResponseStatusCode.CONFLICT: f"이미 사용중인 {data_dict[parameter]}입니다.",
+        ResponseStatusCode.INTERNAL_SERVER_ERROR: "서버 내부 에러가 발생하였습니다."
+    }
+    
+    if parameter == "id":
+        status_code, result = Account._check_duplicate(DBObject.instance, id = data)
+    
+    elif parameter == "nickname":
+        status_code, result = Account._check_duplicate(DBObject.instance, nickname = data)
+    
+    elif parameter == "phone":
+        status_code, result = Account._check_duplicate(DBObject.instance, phone = data)
+        
+    else:
+        status_code, result = Account._check_duplicate(DBObject.instance, email = data)
+    
+    if status_code != ResponseStatusCode.SUCCESS:
+        return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
+    
+    return ResponseModel.show_json(status_code.value, message = response_dict[status_code])
