@@ -174,26 +174,64 @@ async def register_out(id: str, password: str):
     status_code, detail = result
     return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = detail)
 
-@account_router.post("/forgot/password",
-    responses={
+@account_router.post("/forgot/id", responses={
         200: {
             "content": {
                 "application/json": {
-                    "example": {"message": "성공적으로 정보를 변경하였습니다."}
+                    "example": {"status_code": 200, "message": "아이디를 성공적으로 찾았습니다!", "user_id": "union_user"}
                 }
             }
         },
         401: {
             "content": {
                 "application/json": {
-                    "example": {"message": "정보 변경에 실패하였습니다."}
+                    "example": {"status_code": 401, "message": "아이디를 불러오는데 실패하였습니다.", "detail": "ID not found"}
+                }
+            }
+        },
+        
+        500: {
+            "content": {
+                "application/json": {
+                    "example": {"status_code": 500, "message": "서버 내부 에러", "detail": "error occured"}
+                }
+            }
+        }
+    },
+    name = "아이디 찾기")
+async def forgot_id(email: str):
+    response_dict = {
+        ResponseStatusCode.SUCCESS: "아이디를 성공적으로 찾았습니다!",
+        ResponseStatusCode.FAIL: "아이디를 불러오는데 실패하였습니다.",
+        ResponseStatusCode.INTERNAL_SERVER_ERROR: "서버 내부에러가 발생하였습니다."
+    }
+    
+    status_code, result = Account.forgot_id(DBObject.instance, email)
+    if status_code != ResponseStatusCode.SUCCESS:
+        return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
+    
+    return ResponseModel.show_json(status_code.value, message = response_dict[status_code], user_id = result)
+
+@account_router.post("/forgot/password",
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": {"status_code": 200, "message": "성공적으로 정보를 변경하였습니다."}
+                }
+            }
+        },
+        401: {
+            "content": {
+                "application/json": {
+                    "example": {"status_code": 401, "message": "정보 변경에 실패하였습니다.", "detail": "ID not found"}
                 }
             }
         },
         500: {
             "content": {
                 "application/json": {
-                    "example": {"message": "서버 내부 에러"}
+                    "example": {"status_code": 500, "message": "서버 내부 에러", "detail": "error occured"}
                 }
             }
         }
@@ -266,16 +304,16 @@ async def check_duplicate(parameter: str, data: str):
     }
     
     if parameter == "id":
-        status_code, result = Account._check_duplicate(DBObject.instance, id = data)
+        status_code, result = Account.check_duplicate(DBObject.instance, id = data)
     
     elif parameter == "nickname":
-        status_code, result = Account._check_duplicate(DBObject.instance, nickname = data)
+        status_code, result = Account.check_duplicate(DBObject.instance, nickname = data)
     
     elif parameter == "phone":
-        status_code, result = Account._check_duplicate(DBObject.instance, phone = data)
+        status_code, result = Account.check_duplicate(DBObject.instance, phone = data)
         
     else:
-        status_code, result = Account._check_duplicate(DBObject.instance, email = data)
+        status_code, result = Account.check_duplicate(DBObject.instance, email = data)
     
     if status_code != ResponseStatusCode.SUCCESS:
         return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
