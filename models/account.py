@@ -115,7 +115,7 @@ class Account(Base):
     def register(dbo: DBObject, id: str, password: str, nickname: str, email: str, phone: str, s_id: str) -> Tuple[ResponseStatusCode, None | Detail]:
         try:
             hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-            status_code, result = Account._check_duplicate(dbo, id, nickname, email, phone)
+            status_code, result = Account.check_duplicate(dbo, id, nickname, email, phone)
             if status_code != ResponseStatusCode.SUCCESS:
                 return (status_code, result)
 
@@ -163,9 +163,54 @@ class Account(Base):
         except Exception as e:
             logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
+    
+    @staticmethod
+    def forgot_password(dbo: DBObject, account_id: str, new_password: str) -> ResponseStatusCode:
+        """
+        Parameters:
+            db_session (Session): 데이터베이스 연동을 위한 sqlalchemy Session 객체. \n
+            user_id (str): 유저가 변경할 비밀번호의 아이디 \n
+            session (Dict[str, Any]): 로그인을 관리하는 세션 \n
+            new_password (str): 유저가 변경할 새로운 비밀번호 \n
+        
+        Returns:
+            ResponseStatusCode.SUCCESS: 비밀번호 변경 성공. \n
+            ResponseStatusCode.FAIL: 비밀번호 변경 실패. \n
+            ResponseStatusCode.INTERNAL_SERVER_ERROR: 서버 내부 에러. \n
+        """
+        try:
+            status_code, result = Account._load_user_info(dbo, id = account_id)
+            if status_code != ResponseStatusCode.SUCCESS:
+                if status_code == ResponseStatusCode.NOT_FOUND:
+                    status_code = ResponseStatusCode.FAIL
+                return (status_code, result)
+            
+            hashed_password = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            dbo.session.query(Account).filter_by(a_uuid = Account.a_uuid).update({"password": hashed_password})
+            dbo.session.commit()
+            return (ResponseStatusCode.SUCCESS, None)
+
+        except Exception as e:
+            logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
+            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
 
     @staticmethod
-    def _check_duplicate(dbo: DBObject, id: str | None = None, nickname: str | None = None, email: str | None = None, phone: str | None = None) -> ResponseStatusCode | str:
+    def forgot_id(dbo: DBObject, email: str) -> Tuple[ResponseStatusCode, str | Detail]:
+        try:
+            status_code, result = Account._load_user_info(dbo, email = email)
+            if status_code != ResponseStatusCode.SUCCESS:
+                if status_code == ResponseStatusCode.NOT_FOUND:
+                    status_code = ResponseStatusCode.FAIL
+                return (status_code, result)
+            
+            return (ResponseStatusCode.SUCCESS, email)
+        
+        except Exception as e:
+            logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
+            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
+    
+    @staticmethod
+    def check_duplicate(dbo: DBObject, id: str | None = None, nickname: str | None = None, email: str | None = None, phone: str | None = None) -> ResponseStatusCode | str:
         query = dbo.session.query(Account)
         result = None
         detail = ""
@@ -193,15 +238,18 @@ class Account(Base):
         return (ResponseStatusCode.SUCCESS, None) if result is None else (ResponseStatusCode.CONFLICT, Detail(detail))
 
     @staticmethod
-    def _load_user_info(dbo:DBObject, a_uuid: Optional[str] = None, id: Optional[str] = None) -> Tuple[ResponseStatusCode, Account | Detail]:
+    def _load_user_info(dbo:DBObject, a_uuid: Optional[str] = None, id: Optional[str] = None, email: Optional[str] = None) -> Tuple[ResponseStatusCode, Account | Detail]:
         try:
             result = None
             query = dbo.session.query(Account)
-            if id:
-                result = query.filter_by(id = id).first()
-                
             if a_uuid:
                 result = query.filter_by(a_uuid = a_uuid).first()
+                
+            elif id:
+                result = query.filter_by(id = id).first()
+                
+            elif email:
+                result = query.filter_by(email = email).first()
                 
             if result:
                 return (ResponseStatusCode.SUCCESS, result)
@@ -237,34 +285,6 @@ class Account(Base):
             
             return (ResponseStatusCode.SUCCESS, None)
             
-        except Exception as e:
-            logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
-            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
-    
-    @staticmethod
-    def forgot_password(dbo: DBObject, account_id: str, new_password: str) -> ResponseStatusCode:
-        """
-        Parameters:
-            db_session (Session): 데이터베이스 연동을 위한 sqlalchemy Session 객체. \n
-            user_id (str): 유저가 변경할 비밀번호의 아이디 \n
-            session (Dict[str, Any]): 로그인을 관리하는 세션 \n
-            new_password (str): 유저가 변경할 새로운 비밀번호 \n
-        
-        Returns:
-            ResponseStatusCode.SUCCESS: 비밀번호 변경 성공. \n
-            ResponseStatusCode.FAIL: 비밀번호 변경 실패. \n
-            ResponseStatusCode.INTERNAL_SERVER_ERROR: 서버 내부 에러. \n
-        """
-        try:
-            status_code, result = Account._load_user_info(dbo, id = account_id)
-            if status_code != ResponseStatusCode.SUCCESS:
-                return (status_code, result)
-            
-            hashed_password = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-            dbo.session.query(Account).filter_by(a_uuid = Account.a_uuid).update({"password": hashed_password})
-            dbo.session.commit()
-            return (ResponseStatusCode.SUCCESS, None)
-
         except Exception as e:
             logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))

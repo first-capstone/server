@@ -185,19 +185,32 @@ async def register_out(id: str, password: str):
         401: {
             "content": {
                 "application/json": {
-                    "example": {"status_code": 401, "message": "정보 변경에 실패하였습니다."}
+                    "example": {"status_code": 401, "message": "아이디를 불러오는데 실패하였습니다.", "detail": "ID not found"}
                 }
             }
         },
+        
         500: {
             "content": {
                 "application/json": {
-                    "example": {"status_code": 500, "message": "서버 내부 에러"}
+                    "example": {"status_code": 500, "message": "서버 내부 에러", "detail": "error occured"}
                 }
             }
         }
     },
-    name = "비밀번호 변경")
+    name = "아이디 찾기")
+async def forgot_id(email: str):
+    response_dict = {
+        ResponseStatusCode.SUCCESS: "아이디를 성공적으로 찾았습니다!",
+        ResponseStatusCode.FAIL: "아이디를 불러오는데 실패하였습니다.",
+        ResponseStatusCode.INTERNAL_SERVER_ERROR: "서버 내부에러가 발생하였습니다."
+    }
+    
+    status_code, result = Account.forgot_id(DBObject.instance, email)
+    if status_code != ResponseStatusCode.SUCCESS:
+        return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
+    
+    return ResponseModel.show_json(status_code.value, message = response_dict[status_code], user_id = result)
 
 @account_router.post("/forgot/password",
     responses={
@@ -211,14 +224,14 @@ async def register_out(id: str, password: str):
         401: {
             "content": {
                 "application/json": {
-                    "example": {"status_code": 401, "message": "정보 변경에 실패하였습니다."}
+                    "example": {"status_code": 401, "message": "정보 변경에 실패하였습니다.", "detail": "ID not found"}
                 }
             }
         },
         500: {
             "content": {
                 "application/json": {
-                    "example": {"status_code": 500, "message": "서버 내부 에러"}
+                    "example": {"status_code": 500, "message": "서버 내부 에러", "detail": "error occured"}
                 }
             }
         }
