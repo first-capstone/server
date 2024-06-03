@@ -1,8 +1,8 @@
 from models.response import ResponseStatusCode, Detail
 from typing import Dict, Any, List, TypeVar, Tuple
 from utility.checker import is_valid_uuid_format
+from sqlalchemy import Column, String, TEXT, or_
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import Column, String, TEXT
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.engine.row import Row
 from database.conn import DBObject
@@ -18,7 +18,6 @@ import os
 
 University = TypeVar("University", bound="University")
 
-
 class UniversityNameModel:
     u_uuid: str
     univ_name: str
@@ -32,7 +31,7 @@ class UniversityNameModel:
     @property
     def info(self):
         return {"u_uuid": str(self.u_uuid),
-                "univ_name": f"{self.address.split(' ')[0].replace('광역시', '')} {self.univ_name}"}
+                "univ_name": f"{self.univ_name}({self.address.split(' ')[0]})"}
 
 
 class University(Base):
@@ -133,17 +132,22 @@ class University(Base):
         try:
             data = dbo.session.query(University.u_uuid,
                                     University.address,
-                                    University.univ_name).filter(
-                                        University.univ_name.like(
-                                            f"%{search_value}%")).all()
+                                    University.univ_name).filter(University.univ_name.like(f"%{search_value}%")).all()
 
-            if len(data) == 0:
+            data += dbo.session.query(University.u_uuid,
+                                    University.address,
+                                    University.univ_name).filter(University.address.like(f"%{search_value}%")).all()
+            
+            unique_data = list({(record.u_uuid, record.address, record.univ_name) for record in data})
+            final_data = [UniversityNameModel(u) for u in unique_data]
+
+            if len(final_data) == 0:
                 return (ResponseStatusCode.NOT_FOUND,
                         Detail("Data doesn't exist"))
 
             return (ResponseStatusCode.SUCCESS,
-                    list(map(lambda x: UniversityNameModel(x).info,
-                            data[skip: skip + count])))
+                    list(map(lambda x: x.info,
+                            final_data[skip: skip + count])))
 
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
