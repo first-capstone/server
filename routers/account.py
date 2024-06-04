@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends
 from database.conn import DBObject
 from models.account import Account
 
-session = {}
 
 account_router = APIRouter(
     prefix="/account",

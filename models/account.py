@@ -119,7 +119,7 @@ class Account(Base):
             if status_code != ResponseStatusCode.SUCCESS:
                 return (status_code, result)
 
-            account = Account(id = id, password = hashed_password, nickname = nickname, email = email, phone = phone, s_id = s_id)
+            account = Account(id = id,password = hashed_password, nickname = nickname, email = email, phone = phone, s_id = s_id)
             dbo.session.add(account)
             dbo.session.commit()
             return (ResponseStatusCode.SUCCESS, None)
