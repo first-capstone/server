@@ -1,6 +1,8 @@
 from models.response import ResponseModel, ResponseStatusCode
 from fastapi.exceptions import RequestValidationError
+from starlette.middleware.cors import CORSMiddleware
 from env.UNIVERSITY import CARRERNET_URL, API_KEY
+from fastapi.openapi.utils import get_openapi
 from database.conn import DBObject
 from models import University
 from fastapi import FastAPI
@@ -10,10 +12,42 @@ import routers
 
 
 app = FastAPI()
+
+def custom_openapi():
+    if not app.openapi_schema:
+        app.openapi_schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            openapi_version=app.openapi_version,
+            description=app.description,
+            terms_of_service=app.terms_of_service,
+            contact=app.contact,
+            license_info=app.license_info,
+            routes=app.routes,
+            tags=app.openapi_tags,
+            servers=app.servers,
+        )
+        for _, method_item in app.openapi_schema.get('paths').items():
+            for _, param in method_item.items():
+                responses = param.get('responses')
+                if '422' in responses:
+                    del responses['422']
+
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 app.include_router(routers.univ_router)
 app.include_router(routers.account_router)
 app.include_router(routers.article_router)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
@@ -36,4 +70,4 @@ if __name__ == "__main__":
     
     status_code, data = University._check_image_exist(DBObject.instance)
     
-    uvicorn.run("main:app", reload=True, host = "localhost", port = 8080)
+    uvicorn.run("main:app", reload=True, host = "localhost", port = 8000)

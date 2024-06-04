@@ -17,27 +17,27 @@ univ_router = APIRouter(
                     "status_code": 200, "message": "데이터를 불러오는데 성공하였습니다.", "univ_list": [
                         {
                             "u_uuid": "066ce1a1-4153-4b3e-9a3a-04b92a877fc1",
-                            "univ_name": "서울대학교"
+                            "univ_name": "서울대학교(서울특별시)"
                         },
                         {
                             "u_uuid": "ff934e6f-294b-472a-8e64-6e1c3b012a1b",
-                            "univ_name": "고려대학교"
+                            "univ_name": "고려대학교(서울특별시)"
                         },
                         {
                             "u_uuid": "4013a665-b7c5-45a5-9bb4-c31576820151",
-                            "univ_name": "연세대학교"
+                            "univ_name": "연세대학교(서울특별시)"
                         },
                         {
                             "u_uuid": "f50f071e-06e1-43f5-aae3-dfb8c23fb063",
-                            "univ_name": "배재대학교"
+                            "univ_name": "배재대학교(대전광역시)"
                         },
                         {
                             "u_uuid": "290b7568-1800-4e07-a628-3f74061de2df",
-                            "univ_name": "우송대학교"
+                            "univ_name": "우송대학교(대전광역시)"
                         },
                         {
                             "u_uuid": "9ab8c8f9-98f6-4681-92bf-411982a7651d",
-                            "univ_name": "목원대학교"
+                            "univ_name": "목원대학교(대전광역시)"
                         }
                     ]
                 }
@@ -85,27 +85,27 @@ async def get_all_univ_list():
                     "status_code": 200, "message": "데이터를 불러오는데 성공하였습니다.", "univ_list": [
                         {
                             "u_uuid": "066ce1a1-4153-4b3e-9a3a-04b92a877fc1",
-                            "univ_name": "서울대학교"
+                            "univ_name": "서울대학교(서울특별시)"
                         },
                         {
                             "u_uuid": "ff934e6f-294b-472a-8e64-6e1c3b012a1b",
-                            "univ_name": "고려대학교"
+                            "univ_name": "고려대학교(서울특별시)"
                         },
                         {
                             "u_uuid": "4013a665-b7c5-45a5-9bb4-c31576820151",
-                            "univ_name": "연세대학교"
+                            "univ_name": "연세대학교(서울특별시)"
                         },
                         {
                             "u_uuid": "f50f071e-06e1-43f5-aae3-dfb8c23fb063",
-                            "univ_name": "배재대학교"
+                            "univ_name": "배재대학교(대전광역시)"
                         },
                         {
                             "u_uuid": "290b7568-1800-4e07-a628-3f74061de2df",
-                            "univ_name": "우송대학교"
+                            "univ_name": "우송대학교(대전광역시)"
                         },
                         {
                             "u_uuid": "9ab8c8f9-98f6-4681-92bf-411982a7651d",
-                            "univ_name": "목원대학교"
+                            "univ_name": "목원대학교(대전광역시)"
                         }
                     ]
                 }
