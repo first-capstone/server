@@ -10,6 +10,7 @@ import uvicorn
 import routers
 
 
+
 app = FastAPI()
 
 def custom_openapi():
@@ -38,6 +39,8 @@ def custom_openapi():
 app.openapi = custom_openapi
 app.include_router(routers.univ_router)
 app.include_router(routers.account_router)
+app.include_router(routers.article_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

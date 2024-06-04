@@ -90,7 +90,7 @@ class Account(Base):
     @property
     def info(self):
         return {
-            "a_uuid": self.a_uuid,
+            "a_uuid": str(self.a_uuid),
             "id": self.id,
             "nickname": self.nickname,
             "email": self.email,
@@ -119,7 +119,7 @@ class Account(Base):
             if status_code != ResponseStatusCode.SUCCESS:
                 return (status_code, result)
 
-            account = Account(id = id, password = hashed_password, nickname = nickname, email = email, phone = phone, s_id = s_id)
+            account = Account(id = id,password = hashed_password, nickname = nickname, email = email, phone = phone, s_id = s_id)
             dbo.session.add(account)
             dbo.session.commit()
             return (ResponseStatusCode.SUCCESS, None)
@@ -199,11 +199,9 @@ class Account(Base):
         try:
             status_code, result = Account._load_user_info(dbo, email = email)
             if status_code != ResponseStatusCode.SUCCESS:
-                if status_code == ResponseStatusCode.NOT_FOUND:
-                    status_code = ResponseStatusCode.FAIL
                 return (status_code, result)
             
-            return (ResponseStatusCode.SUCCESS, email)
+            return (ResponseStatusCode.SUCCESS, result.id)
         
         except Exception as e:
             logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
@@ -270,6 +268,10 @@ class Account(Base):
             
             return (ResponseStatusCode.SUCCESS, a_uuid)
                 
+        except jwt.exceptions.DecodeError as e:
+            logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
+            return (ResponseStatusCode.ENTITY_ERROR, Detail(str(e)))
+
         except Exception as e:
             logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))

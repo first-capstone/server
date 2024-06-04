@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends
 from database.conn import DBObject
 from models.account import Account
 
-session = {}
 
 account_router = APIRouter(
     prefix="/account",
@@ -319,3 +318,66 @@ async def check_duplicate(parameter: str, data: str):
         return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
     
     return ResponseModel.show_json(status_code.value, message = response_dict[status_code])
+
+@account_router.get("/profile", responses={
+        200: {
+            "description": "프로필을 성공적으로 조회했을 때 발생합니다.",
+            "content": {
+                "application/json": {
+                    "example": {"status_code": 200, "message": "프로필을 성공적으로 조회했습니다!", "account_info": {
+                        "a_uuid": "9c2670bb-cb37-44ef-9980-f2fe99d4bb00",
+                        "id": "union_id",
+                        "nickname": "mynameisunion",
+                        "email": "2237001@pcu.ac.kr",
+                        "phone": "010-0000-0000",
+                        "s_id": "2237001",
+                        "login_date": "2024-06-01 00:00:00",
+                        "signup_date": "2024-05-15 00:00:00"
+                    }}
+                }
+            }
+        },
+        404: {
+            "description": "데이터베이스에 유저 정보가 존재하지 않을 때 발생합니다.",
+            "content": {
+                "application/json": {
+                    "example": {"status_code": 404, "message": "프로필 정보를 불러오는데 실패하였습니다.", "detail": "account not found"}
+                }
+            }
+        },
+        422: {
+            "description": "전달받은 토큰값이 올바르지 않을 때 발생합니다.",
+            "content": {
+                "application/json":{
+                    "example": {"status_code": 422, "message": "토큰 형식이 잘못되었습니다.", "detail": "Invalid header string: 'utf-8' codec can't decode byte 0x9d in position 15: invalid start byte"}
+                }
+            } 
+        },
+        500: {
+            "description":"코드 에러가 있을 때 발생합니다.",
+            "content": {
+                "application/json": {
+                    "example": {"status_code": 500, "message": "서버 내부 에러가 발생하였습니다.", "detail": "Error occured."}
+                }
+            }
+        }
+    },
+    name="프로필 조회"
+)
+async def get_profile(access_token: str):
+    response_dict = {
+        ResponseStatusCode.SUCCESS: "프로필을 성공적으로 조회하였습니다.",
+        ResponseStatusCode.NOT_FOUND: "프로필 정보를 불러오는데 실패하였습니다.",
+        ResponseStatusCode.ENTITY_ERROR: "토큰 형식이 잘못되었습니다.",
+        ResponseStatusCode.INTERNAL_SERVER_ERROR: "서버 내부 에러가 발생하였습니다."
+    }
+    
+    status_code, result = Account._decode_token_to_uuid(access_token)
+    if status_code == ResponseStatusCode.SUCCESS:
+        status_code, result = Account._load_user_info(DBObject.instance, a_uuid=result)
+        
+        return ResponseModel.show_json(status_code.value, message = response_dict[status_code], account_info = result.info)
+    
+    if status_code != ResponseStatusCode.SUCCESS:
+        return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
+        
