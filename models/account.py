@@ -14,6 +14,7 @@ import logging
 import bcrypt
 import uuid
 import jwt
+import os
 
 Account = TypeVar("Account", bound="Account")
 
@@ -78,6 +79,7 @@ class Account(Base):
     email: str = Column(String(50), nullable=False, unique=True)  # 계정 이메일
     phone: str = Column(String(13), nullable=False, unique=True)  # 계정 전화번호
     s_id: str = Column(TEXT)  # 학번
+    profile: str = Column(TEXT, nullable=True) # 프로필 이미지
     signup_date: datetime = Column(DateTime, default=datetime.now())  # 계정 생성일
     login_date: datetime = Column(DateTime)  # 마지막 로그인 날짜
     u_uuid: str = Column(UUID(as_uuid=True), default=None)  # 학교 uuid
@@ -96,6 +98,7 @@ class Account(Base):
             "email": self.email,
             "phone": self.phone,
             "s_id": self.s_id,
+            "profile": self.profile,
             "login_date": self.login_date.strftime("%Y-%m-%d %H:%M:%S"),
             "signup_date": self.signup_date.strftime("%Y-%m-%d %H:%M:%S"),
         }
@@ -234,6 +237,30 @@ class Account(Base):
                 detail = f"{phone} phone number already exist"
 
         return (ResponseStatusCode.SUCCESS, None) if result is None else (ResponseStatusCode.CONFLICT, Detail(detail))
+    
+    def update_profile_image(self, dbo: DBObject, access_token: str, profile: bytes | None = None) -> Tuple[ResponseStatusCode, None | Detail]:
+        try:
+            status_code, result = self._check_is_valid_token(access_token)
+            if status_code != ResponseStatusCode.SUCCESS:
+                return (status_code, result)
+            
+            if profile:
+                file_name = f"{str(uuid.uuid4())}.jpg"
+                with open(os.path.join("images/profile", file_name), "wb") as fp:
+                    fp.write(profile)
+                
+                self.profile = os.path.join("images/profile", file_name)
+            
+            else:
+                self.profile = None
+                
+            dbo.session.commit()
+            return (ResponseStatusCode.SUCCESS, None)
+            
+        except Exception as e:
+            dbo.session.rollback()
+            logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
+            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
 
     @staticmethod
     def _load_user_info(dbo:DBObject, a_uuid: Optional[str] = None, id: Optional[str] = None, email: Optional[str] = None) -> Tuple[ResponseStatusCode, Account | Detail]:
@@ -282,7 +309,7 @@ class Account(Base):
             if status_code != ResponseStatusCode.SUCCESS:
                 return (status_code, result)
             
-            if result != self.a_uuid:
+            if result != str(self.a_uuid):
                 return (ResponseStatusCode.FAIL, Detail("uuid is not match"))
             
             return (ResponseStatusCode.SUCCESS, None)

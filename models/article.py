@@ -1,16 +1,14 @@
 from sqlalchemy import Column, TEXT, String, DateTime, ForeignKeyConstraint, Boolean
-from sqlalchemy.dialects.postgresql import UUID
 from models.response import ResponseStatusCode, Detail
-from utility.checker import is_valid_uuid_format
-from datetime import datetime,timedelta
-from .account import Account
+from sqlalchemy.dialects.postgresql import UUID
 from database.conn import DBObject
-from models.base import Base
 from typing import Tuple,TypeVar
+from datetime import datetime
+from .account import Account
+from models.base import Base
 import traceback
 import logging
 import uuid
-import jwt
 
 Article =TypeVar("Article", bound="Article")
 
@@ -44,9 +42,20 @@ class Article(Base):
             'category': self.category,
             'is_anonymous': self.is_anonymous
         }
+        
+    @property
+    def shallow_info(self):
+        return {
+            "art_uuid": str(self.art_uuid),
+            "a_uuid": str(self.a_uuid),
+            "title": self.title,
+            "content": self.content,
+            'upload_date': self.upload_date.strftime("%Y-%m-%d %H:%M:%S"),
+            "is_anonymous": self.is_anonymous
+        }
 
 
-    def __init__(self, art_uuid: str, a_uuid: str, title: str, content: str, upload_date: datetime, is_anonymous: bool, update_date: datetime = None, category: str = None):
+    def __init__(self, a_uuid: str, title: str, content: str, upload_date: datetime, is_anonymous: bool, update_date: datetime = None, category: str = None, art_uuid: str | None = None):
         self.art_uuid = art_uuid
         self.a_uuid = a_uuid
         self.title = title
@@ -57,75 +66,115 @@ class Article(Base):
         self.category = category
     
     @staticmethod
-    def write_article(dbo: DBObject, token: str, title: str, content: str, is_anonymous: bool):
-        # JWT 검증
-        response_code, a_uuid_or_detail = Account._decode_token_to_uuid(token)
-        if response_code != ResponseStatusCode.SUCCESS:
-            return (response_code, a_uuid_or_detail)
-        
-       # 데이터 타입 검증
-        if not isinstance(title, str):
-            return (ResponseStatusCode.ENTITY_ERROR, Detail("title is not valid data type, (data type: str)"))
-        if not isinstance(content, str):
-            return (ResponseStatusCode.ENTITY_ERROR, Detail("content is not valid data type, (data type: str)"))
-        if not isinstance(is_anonymous, bool):
-            return (ResponseStatusCode.ENTITY_ERROR, Detail("is_anonymous is not valid data type, (data type: bool)"))
-
-        # 새로운 기사 생성
-        article = Article(
-            art_uuid=uuid.uuid4(),
-            a_uuid=str(a_uuid_or_detail),  # 성공 시 a_uuid_or_detail에는 사용자 UUID가 담겨 있음
-            title=title,
-            content=content,
-            upload_date=datetime.now(),
-            is_anonymous=is_anonymous,
-        )
+    def insert_article(dbo: DBObject, token: str, title: str, content: str, is_anonymous: bool) -> Tuple[ResponseStatusCode, None | Detail]:
         try:
-            # DB에 저장
+            response_code, result = Account._decode_token_to_uuid(token)
+            if response_code != ResponseStatusCode.SUCCESS:
+                return (response_code, result)
+            
+            article = Article(
+                art_uuid=uuid.uuid4(),
+                a_uuid=str(result),
+                title=title,
+                content=content,
+                upload_date=datetime.now(),
+                is_anonymous=is_anonymous,
+            )
+            
             dbo.session.add(article)
             dbo.session.commit()
-            # 성공 메시지 반환
+            
             return (ResponseStatusCode.SUCCESS, None)
+        
         except Exception as e:
-            # 예외 발생 시 DB 롤백 및 에러 메시지 반환
             dbo.session.rollback()
+            logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(f"{e}"))
 
     @staticmethod
-    def delete_article(dbo: DBObject, art_uuid: str, a_uuid: str) -> Tuple[ResponseStatusCode, Detail]:
-        """Deletes an article from the database.
-
-        Args:
-            dbo (DBObject): Database connection object.
-            art_uuid (str): Unique identifier of the article to delete.
-            a_uuid (str): Unique identifier of the user who wants to delete the article.
-
-        Returns:
-            Tuple[ResponseStatusCode, Detail]: 
-                - ResponseStatusCode: Indicates the result of the operation (SUCCESS or error code).
-                - Detail: Additional details about the response (None for success, error message otherwise).
-        """
-
+    def delete_article(dbo: DBObject, art_uuid: str, a_uuid: str) -> Tuple[ResponseStatusCode, None | Detail]:
         try:
-            # Check if the article exists
-            article = dbo.session.query(Article).filter_by(art_uuid=art_uuid).first()
+            article = dbo.session.query(Article).filter_by(art_uuid = art_uuid).first()
             if not article:
-                return (ResponseStatusCode.ENTITY_NOT_FOUND, Detail(f"Article with id {art_uuid} not found"))
+                return (ResponseStatusCode.NOT_FOUND, Detail(f"Article with id {art_uuid} not found"))
 
-            # Check if the user has permission to delete the article (ownership check)
-            if article.a_uuid != a_uuid:
-                return (ResponseStatusCode.UNAUTHORIZED, Detail(f"User with id {a_uuid} is not authorized to delete this article"))
+            if str(article.a_uuid) != a_uuid:
+                return (ResponseStatusCode.FAIL, Detail(f"User with id {a_uuid} is not authorized to delete this article"))
 
-            # Delete the article from the database
             dbo.session.delete(article)
             dbo.session.commit()
 
-            # Success message
             return (ResponseStatusCode.SUCCESS, None)
 
         except Exception as e:
-            # Error handling
             dbo.session.rollback()
             logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
+
+    @staticmethod
+    def update_article(dbo: DBObject, art_uuid: str, token: str, title: str, content: str, is_anonymous: bool) -> Tuple[ResponseStatusCode, None | Detail]:
+        try:
+            # Token을 이용하여 사용자 확인
+            response_code, result = Account._decode_token_to_uuid(token)
+            if response_code != ResponseStatusCode.SUCCESS:
+                return (response_code, result)
+            
+            a_uuid = result
+            status_code, result = Article._load_article_from_uuid(dbo, art_uuid)
+            if status_code != ResponseStatusCode.SUCCESS:
+                return (status_code, result)
+
+            if str(result.a_uuid) != a_uuid:
+                return (ResponseStatusCode.FAIL, Detail("User is not authorized to update this article"))
+
+            # 업데이트할 게시물 찾기
+            article = dbo.session.query(Article).filter(Article.art_uuid == art_uuid, Article.a_uuid == result.a_uuid).one_or_none()
+            if not article:
+                return (ResponseStatusCode.NOT_FOUND, Detail(f"Article with id {art_uuid} not found"))
+
+            # 게시물 정보 업데이트
+            article.title = title
+            article.content = content
+            article.is_anonymous = is_anonymous
+            article.update_date = datetime.now()
+
+            dbo.session.commit()
+
+            return (ResponseStatusCode.SUCCESS, None)
         
+        except Exception as e:
+            dbo.session.rollback()
+            logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
+            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
+    
+    @staticmethod
+    def get_article_list(dbo: DBObject, start: int = 0) -> Tuple[ResponseStatusCode, list | Detail]:
+        try:
+            articles = dbo.session.query(Article).all()
+            articles = list(map(lambda x: {    
+                "art_uuid": str(x.art_uuid),
+                "a_uuid": str(x.a_uuid),
+                "title": x.title,
+                "content": x.content,
+                'upload_date': x.upload_date.strftime("%Y-%m-%d %H:%M:%S"),
+                "is_anonymous": x.is_anonymous
+            }, articles[start: max(start + 11, len(articles))]))
+            return (ResponseStatusCode.SUCCESS, articles)
+            
+        except Exception as e:
+            logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
+            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
+        
+    @staticmethod
+    def _load_article_from_uuid(dbo: DBObject, art_uuid: str) -> Tuple[ResponseStatusCode, Article | Detail]:
+        try:
+            
+            article = dbo.session.query(Article).filter_by(art_uuid = art_uuid).first()
+            if not article:
+                return (ResponseStatusCode.NOT_FOUND, Detail(f"art_uuid {art_uuid} not found in article relation"))
+            
+            return (ResponseStatusCode.SUCCESS, article)
+            
+        except Exception as e:
+            logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
+            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))

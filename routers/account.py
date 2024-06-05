@@ -1,7 +1,7 @@
 from models.response import ResponseStatusCode, ResponseModel, Detail
 from models.account import SignUpModel, ForgotPasswordModel
+from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import APIRouter, Depends
 from database.conn import DBObject
 from models.account import Account
 
@@ -242,7 +242,7 @@ async def forgot_password(model: ForgotPasswordModel):
         ResponseStatusCode.FAIL: "정보 변경에 실패하였습니다.",
         ResponseStatusCode.INTERNAL_SERVER_ERROR: "서버 내부 에러가 발생하였습니다."
     }
-
+    
     status_code, result = Account.forgot_password(DBObject.instance, model.user_id, model.password)
     if status_code != ResponseStatusCode.SUCCESS:
         return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
@@ -381,3 +381,42 @@ async def get_profile(access_token: str):
     if status_code != ResponseStatusCode.SUCCESS:
         return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
         
+@account_router.get("/profile/image")
+async def get_profile_image(access_token: str):
+    response_dict = {
+        ResponseStatusCode.SUCCESS: "프로필을 성공적으로 조회하였습니다.",
+        ResponseStatusCode.NOT_FOUND: "프로필 정보를 불러오는데 실패하였습니다.",
+        ResponseStatusCode.ENTITY_ERROR: "토큰 형식이 잘못되었습니다.",
+        ResponseStatusCode.INTERNAL_SERVER_ERROR: "서버 내부 에러가 발생하였습니다."
+    }
+    
+    status_code, result = Account._decode_token_to_uuid(access_token)
+    if status_code == ResponseStatusCode.SUCCESS:
+        status_code, result = Account._load_user_info(DBObject.instance, a_uuid = result)
+        if status_code == ResponseStatusCode.SUCCESS:
+            return ResponseModel.show_image(result.profile)
+    
+    return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
+
+@account_router.post("/profile/image/update")
+async def update_profile_image(access_token: str, file: UploadFile = File(None)):
+    response_dict = {
+        ResponseStatusCode.SUCCESS: "프로필을 성공적으로 업데이트 하였습니다.",
+        ResponseStatusCode.FAIL: "ㅁㄴㅇ",
+        ResponseStatusCode.NOT_FOUND: "사용자 정보를 불러오는데 실패하였습니다.",
+        ResponseStatusCode.ENTITY_ERROR: "엔티티 형식이 잘못되었습니다.",
+        ResponseStatusCode.INTERNAL_SERVER_ERROR: "서버 내부 에러가 발생하였습니다."
+    }
+    
+    status_code, result = Account._decode_token_to_uuid(access_token)
+    if status_code == ResponseStatusCode.SUCCESS:
+        status_code, result = Account._load_user_info(DBObject.instance, a_uuid = result)
+        
+        if status_code == ResponseStatusCode.SUCCESS:
+            status_code, result = result.update_profile_image(DBObject.instance, access_token, file)
+            
+            if status_code == ResponseStatusCode.SUCCESS:
+                return ResponseModel.show_json(status_code.value, message = response_dict[status_code])
+            
+    return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
+    

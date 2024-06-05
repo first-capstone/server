@@ -10,7 +10,6 @@ import uvicorn
 import routers
 
 
-
 app = FastAPI()
 
 def custom_openapi():
