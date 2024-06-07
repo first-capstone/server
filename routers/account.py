@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from database.conn import DBObject
 from models.account import Account
+import os
 
 
 account_router = APIRouter(
@@ -29,6 +30,14 @@ account_router = APIRouter(
                 }
             }
         },
+        404: {
+            "description":"입력받은 u_uuid가 university 테이블에 데이터가 등록이 안되어있을때 발생합니다.",
+            "content": {
+                "application/json": {
+                    "example": {"status_code": 404, "message": "등록되지 않은 대학교입니다.", "detail": "u_uuid wow_awesome_uuid not found in University relation."}
+                }
+            }
+        },
         409: {
             "description":"이미 account테이블에 데이터가 등록되어 있을 때 발생합니다.",
             "content": {
@@ -41,7 +50,7 @@ account_router = APIRouter(
             "description": "데이터 타입 잘못.",
             "content": {
                 "application/json":{
-                    "example": {"status_code": 422, "message": "데이터 타입 에러","detail": "data type error"}
+                    "example": {"status_code": 422, "message": "데이터 타입 오류가 발생하였습니다.", "detail": "data type error"}
                 }
             } 
         },
@@ -60,11 +69,13 @@ async def register(model: SignUpModel):
     response_dict = {
         ResponseStatusCode.SUCCESS: "회원가입에 성공하였습니다.",
         ResponseStatusCode.FAIL: "회원가입에 실패하였습니다.",
+        ResponseStatusCode.NOT_FOUND: "등록되지 않은 대학교입니다.",
         ResponseStatusCode.CONFLICT: "이미 등록된 계정 또는 이메일 입니다.",
+        ResponseStatusCode.ENTITY_ERROR: "유효하지 않은 uuid 포맷입니다.",
         ResponseStatusCode.INTERNAL_SERVER_ERROR: "서버 내부 에러가 발생하였습니다."
     }
     
-    status_code, detail = Account.register(DBObject.instance, model.user_id, model.password, model.nickname, model.email, model.phone, model.s_id )
+    status_code, detail = Account.register(DBObject.instance, model.user_id, model.password, model.nickname, model.email, model.phone, model.u_uuid, model.s_id)
 
     if status_code != ResponseStatusCode.SUCCESS:
         return ResponseModel.show_json(status_code = status_code.value, message = response_dict[status_code], detail = detail.text)
@@ -394,7 +405,7 @@ async def get_profile_image(access_token: str):
     if status_code == ResponseStatusCode.SUCCESS:
         status_code, result = Account._load_user_info(DBObject.instance, a_uuid = result)
         if status_code == ResponseStatusCode.SUCCESS:
-            return ResponseModel.show_image(result.profile)
+            return ResponseModel.show_image(os.path.join("images/profile", "default_user.png") if not result.profile else result.profile)
     
     return ResponseModel.show_json(status_code.value, message = response_dict[status_code], detail = result.text)
 

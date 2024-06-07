@@ -4,6 +4,7 @@ from models.response import ResponseStatusCode, Detail
 from utility.checker import is_valid_uuid_format
 from sqlalchemy.dialects.postgresql import UUID
 from typing import TypeVar, Tuple, Optional
+from models.university import University
 from database.conn import DBObject
 from pydantic import BaseModel
 from datetime import timedelta
@@ -34,6 +35,7 @@ class SignUpModel(IDPWDModel):
     nickname: str
     email: str
     phone: str
+    u_uuid: str
     s_id: str
 
 
@@ -115,14 +117,24 @@ class Account(Base):
         self.signup_date = signup_date
 
     @staticmethod
-    def register(dbo: DBObject, id: str, password: str, nickname: str, email: str, phone: str, s_id: str) -> Tuple[ResponseStatusCode, None | Detail]:
+    def register(dbo: DBObject, id: str, password: str, nickname: str, email: str, phone: str, u_uuid: str, s_id: str) -> Tuple[ResponseStatusCode, None | Detail]:
         try:
+            if not is_valid_uuid_format(u_uuid):
+                return (ResponseStatusCode.ENTITY_ERROR, Detail(f"{u_uuid} is not valid uuid format"))
+            
             hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
             status_code, result = Account.check_duplicate(dbo, id, nickname, email, phone)
             if status_code != ResponseStatusCode.SUCCESS:
                 return (status_code, result)
 
-            account = Account(id = id,password = hashed_password, nickname = nickname, email = email, phone = phone, s_id = s_id)
+            status_code, result = University._load_all_u_uuid(dbo)
+            if status_code != ResponseStatusCode.SUCCESS:
+                return (status_code, result)
+            
+            if u_uuid not in result:
+                return (ResponseStatusCode.NOT_FOUND, Detail(f"u_uuid {u_uuid} not in University relation"))
+            
+            account = Account(id = id,password = hashed_password, nickname = nickname, email = email, phone = phone, u_uuid = u_uuid, s_id = s_id)
             dbo.session.add(account)
             dbo.session.commit()
             return (ResponseStatusCode.SUCCESS, None)
@@ -132,14 +144,14 @@ class Account(Base):
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
         
     def register_out(self, dbo: DBObject) -> Tuple[ResponseStatusCode, None | Detail]:
-            try:
-                dbo.session.query(Account).filter_by(a_uuid = self.a_uuid).delete()
-                dbo.session.commit()
-                return (ResponseStatusCode.SUCCESS, None)
-            
-            except Exception as e:
-                logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
-                return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
+        try:
+            dbo.session.query(Account).filter_by(a_uuid = self.a_uuid).delete()
+            dbo.session.commit()
+            return (ResponseStatusCode.SUCCESS, None)
+        
+        except Exception as e:
+            logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
+            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
             
     @staticmethod
     def login(dbo: DBObject, user_id: str, password: str) -> Tuple[ResponseStatusCode, TokenModel | Detail]: 

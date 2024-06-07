@@ -103,7 +103,6 @@ class University(Base):
         u_uuid: str
     ) -> Tuple[ResponseStatusCode, University | Detail]:
         try:
-            print(u_uuid)
             if not is_valid_uuid_format(u_uuid):
                 return (ResponseStatusCode.ENTITY_ERROR,
                         Detail(f"{u_uuid} is not valid uuid format"))
@@ -162,6 +161,17 @@ class University(Base):
 
             return (ResponseStatusCode.SUCCESS, self.logo_path)
 
+        except Exception as e:
+            logging.error(f"""{e}: {''.join(traceback.format_exception(None,
+                        e, e.__traceback__))}""")
+            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
+        
+    @staticmethod
+    def _load_all_u_uuid(dbo: DBObject) -> Tuple[ResponseStatusCode, list | Detail]:
+        try:
+            results = dbo.session.query(University.u_uuid).all()
+            return (ResponseStatusCode.SUCCESS, results)
+            
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
                         e, e.__traceback__))}""")
