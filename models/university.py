@@ -121,38 +121,6 @@ class University(Base):
                         e, e.__traceback__))}""")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
 
-    @staticmethod
-    def search_univ_name(
-        dbo: DBObject,
-        search_value: str,
-        count: int = 10,
-        skip: int = 0
-    ) -> Tuple[ResponseStatusCode, List[Dict[str, Any]] | Detail]:
-        try:
-            data = dbo.session.query(University.u_uuid,
-                                    University.address,
-                                    University.univ_name).filter(University.univ_name.like(f"%{search_value}%")).all()
-
-            data += dbo.session.query(University.u_uuid,
-                                    University.address,
-                                    University.univ_name).filter(University.address.like(f"%{search_value}%")).all()
-            
-            unique_data = list({(record.u_uuid, record.address, record.univ_name) for record in data})
-            final_data = [UniversityNameModel(u) for u in unique_data]
-
-            if len(final_data) == 0:
-                return (ResponseStatusCode.NOT_FOUND,
-                        Detail("Data doesn't exist"))
-
-            return (ResponseStatusCode.SUCCESS,
-                    list(map(lambda x: x.info,
-                            final_data[skip: skip + count])))
-
-        except Exception as e:
-            logging.error(f"""{e}: {''.join(traceback.format_exception(None,
-                        e, e.__traceback__))}""")
-            return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
-
     def get_logo_path(self) -> Tuple[ResponseStatusCode, str | Detail]:
         try:
             if self.logo_path is None:
