@@ -105,7 +105,7 @@ class Account(Base):
             "signup_date": self.signup_date.strftime("%Y-%m-%d %H:%M:%S"),
         }
 
-    def __init__ (self, id: str, nickname: str, password: str, phone: str, email: str, s_id : str, a_uuid: str | None = None, login_date: datetime | None = None, signup_date: datetime | None = None):
+    def __init__ (self, id: str, nickname: str, password: str, phone: str, email: str, s_id : str, u_uuid: str, a_uuid: str | None = None, login_date: datetime | None = None, signup_date: datetime | None = None):
         self.id = id
         self.nickname = nickname
         self.password = password
@@ -115,6 +115,7 @@ class Account(Base):
         self.a_uuid = a_uuid
         self.login_date = login_date
         self.signup_date = signup_date
+        self.u_uuid = u_uuid
 
     @staticmethod
     def register(dbo: DBObject, id: str, password: str, nickname: str, email: str, phone: str, u_uuid: str, s_id: str) -> Tuple[ResponseStatusCode, None | Detail]:
@@ -134,7 +135,7 @@ class Account(Base):
             if u_uuid not in result:
                 return (ResponseStatusCode.NOT_FOUND, Detail(f"u_uuid {u_uuid} not in University relation"))
             
-            account = Account(id = id,password = hashed_password, nickname = nickname, email = email, phone = phone, u_uuid = u_uuid, s_id = s_id)
+            account = Account(id = id,password = hashed_password, nickname = nickname, email = email, phone = phone, u_uuid = uuid.UUID(u_uuid), s_id = s_id)
             dbo.session.add(account)
             dbo.session.commit()
             return (ResponseStatusCode.SUCCESS, None)

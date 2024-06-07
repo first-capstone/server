@@ -138,7 +138,7 @@ class University(Base):
     def _load_all_u_uuid(dbo: DBObject) -> Tuple[ResponseStatusCode, list | Detail]:
         try:
             results = dbo.session.query(University.u_uuid).all()
-            return (ResponseStatusCode.SUCCESS, results)
+            return (ResponseStatusCode.SUCCESS, list(map(lambda x: str(x[0]), results)))
             
         except Exception as e:
             logging.error(f"""{e}: {''.join(traceback.format_exception(None,
