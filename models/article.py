@@ -2,6 +2,7 @@ from sqlalchemy import Column, TEXT, String, DateTime, ForeignKeyConstraint, Boo
 from models.response import ResponseStatusCode, Detail
 from sqlalchemy.dialects.postgresql import UUID
 from database.conn import DBObject
+from sqlalchemy.orm import aliased
 from typing import Tuple,TypeVar
 from datetime import datetime
 from .account import Account
@@ -151,20 +152,47 @@ class Article(Base):
     def get_article_list(dbo: DBObject, start: int = 0) -> Tuple[ResponseStatusCode, list | Detail]:
         try:
             articles = dbo.session.query(Article).all()
-            articles = list(map(lambda x: {    
-                "art_uuid": str(x.art_uuid),
-                "a_uuid": str(x.a_uuid),
-                "title": x.title,
-                "content": x.content,
-                'upload_date': x.upload_date.strftime("%Y-%m-%d %H:%M:%S"),
-                "is_anonymous": x.is_anonymous
-            }, articles[start: max(start + 11, len(articles))]))
-            return (ResponseStatusCode.SUCCESS, articles)
-            
+            articles_list = []
+
+            for article in articles[start: min(start + 11, len(articles))]:
+                if article.is_anonymous:
+                    nickname = "Anonymous" #익명
+                    a_uuid = "Anonymous" #익명 
+                    user = dbo.session.query(Account).filter_by(a_uuid=article.a_uuid).first()
+                    if user:
+                        u_uuid = str(user.u_uuid)
+                    else:
+                        u_uuid = "Unknown"
+                else:
+                    user = dbo.session.query(Account).filter_by(a_uuid=article.a_uuid).first()
+                    if user:
+                        nickname = user.nickname
+                        a_uuid = str(user.a_uuid)
+                        u_uuid = str(user.u_uuid)
+                    else:
+                        nickname = "Unknown"
+                        a_uuid = "Unknown"
+                        u_uuid = "Unknown"
+
+                articles_list.append({
+                    "art_uuid": str(article.art_uuid),
+                    "a_uuid": a_uuid,
+                    "nickname": nickname,
+                    "title": article.title,
+                    "content": article.content,
+                    'upload_date': article.upload_date.strftime("%Y-%m-%d %H:%M:%S"),
+                    "is_anonymous": article.is_anonymous,
+                    "u_uuid": u_uuid
+                })
+
+            return (ResponseStatusCode.SUCCESS, articles_list)
+
         except Exception as e:
             logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
-        
+
+
+
     @staticmethod
     def _load_article_from_uuid(dbo: DBObject, art_uuid: str) -> Tuple[ResponseStatusCode, Article | Detail]:
         try:
@@ -178,3 +206,5 @@ class Article(Base):
         except Exception as e:
             logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
+        
+    
