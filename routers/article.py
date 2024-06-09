@@ -49,11 +49,11 @@ article_router = APIRouter(
 async def get_articles(page: int = 1):
     if page < 1:
         return ResponseModel.show_json(ResponseStatusCode.ENTITY_ERROR.value, message = "엔티티 전달이 잘못되었습니다.", detail = "page parameter must be bigger than 0")
-    
+
     status_code, result = Article.get_article_list(DBObject.instance, (page - 1) * 10)
     if status_code == ResponseStatusCode.SUCCESS:
         return ResponseModel.show_json(ResponseStatusCode.SUCCESS.value, message = "글을 성공적으로 조회했습니다!", articles = result)
-    
+
     else:
         return ResponseModel.show_json(ResponseStatusCode.INTERNAL_SERVER_ERROR.value, message = "서버 내부 에러가 발생하였습니다", detail = result.text)
 
