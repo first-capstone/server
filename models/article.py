@@ -25,6 +25,7 @@ class Article(Base):
     art_uuid: str = Column(UUID(as_uuid=True),
                            primary_key=True, default=uuid.uuid4())  # 게시물 고유 uuid
     a_uuid: str = Column(UUID(as_uuid=True), default=None)  # 계정 고유 uuid
+    u_uuid: str = Column(UUID(as_uuid = True), default = None)
     title: str = Column(String(30), nullable=False)  # 게시물 제목
     content: str = Column(TEXT, nullable=False)  # 게시물 내용
     upload_date: datetime = Column(DateTime, default=datetime.now())  # 게시물 업로드 날짜
@@ -36,6 +37,9 @@ class Article(Base):
 
     __table_args__ = (ForeignKeyConstraint(
         ["a_uuid"], ["account.a_uuid"],
+        ondelete="SET NULL", onupdate="CASCADE"
+    ), ForeignKeyConstraint(
+        ["u_uuid"], ["university.u_uuid"],
         ondelete="SET NULL", onupdate="CASCADE"
     ),)
 
@@ -69,8 +73,9 @@ class Article(Base):
         }
 
 
-    def __init__(self, a_uuid: str, title: str, content: str, upload_date: datetime, is_anonymous: bool, update_date: datetime = None, category: str = None, art_uuid: str | None = None, image_urls: List[str] = None, image_types: List[ImageType] = None):
+    def __init__(self, a_uuid: str, u_uuid: str, title: str, content: str, upload_date: datetime, is_anonymous: bool, update_date: datetime = None, category: str = None, art_uuid: str | None = None, image_urls: List[str] = None, image_types: List[ImageType] = None):
         self.art_uuid = art_uuid
+        self.u_uuid = u_uuid
         self.a_uuid = a_uuid
         self.title = title
         self.content = content
@@ -88,13 +93,18 @@ class Article(Base):
             if status_code != ResponseStatusCode.SUCCESS:
                 return (status_code, result)
             
+            status_code, result = Account._load_user_info(dbo, result)
+            if status_code != ResponseStatusCode.SUCCESS:
+                return (status_code, result)
+            
             article = Article(
                 art_uuid=uuid.uuid4(),
-                a_uuid=str(result),
+                a_uuid=str(result.a_uuid),
                 title=title,
                 content=content,
                 upload_date=datetime.now(),
                 is_anonymous=is_anonymous,
+                u_uuid = str(result.u_uuid),
                 image_urls=image_urls if image_urls else [],
                 image_types=image_types if image_types else []
             )
@@ -179,29 +189,25 @@ class Article(Base):
 
             for article in articles[start: min(start + 11, len(articles))]:
                 if article.is_anonymous:
-                    nickname = "Anonymous" #익명
+                    nickname = "유니" #익명
                     a_uuid = "Anonymous" #익명 
-                    user = dbo.session.query(Account).filter_by(a_uuid=article.a_uuid).first()
-                    if user:
-                        u_uuid = str(user.u_uuid)
-                    else:
-                        u_uuid = "Unknown"
+                    
                 else:
                     user = dbo.session.query(Account).filter_by(a_uuid=article.a_uuid).first()
                     if user:
                         nickname = user.nickname
                         a_uuid = str(user.a_uuid)
-                        u_uuid = str(user.u_uuid)
+                        
                     else:
-                        nickname = "Unknown"
+                        nickname = "알 수 없는 사용자"
                         a_uuid = "Unknown"
-                        u_uuid = "Unknown"
 
                 articles_list.append({
                     "art_uuid": str(article.art_uuid),
                     "a_uuid": a_uuid,
                     "nickname": nickname,
                     "title": article.title,
+                    "u_uuid": article.u_uuid,
                     "content": article.content,
                     'upload_date': article.upload_date.strftime("%Y-%m-%d %H:%M:%S"),
                     "is_anonymous": article.is_anonymous,
