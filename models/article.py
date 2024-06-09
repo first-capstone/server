@@ -166,8 +166,9 @@ class Article(Base):
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
     
     @staticmethod
-    def get_article_list(dbo: DBObject, start: int = 0) -> Tuple[ResponseStatusCode, list | Detail]:
+    def get_article_list(dbo: DBObject, token: str ,start: int) -> Tuple[ResponseStatusCode, list | Detail]:
         try:
+            print(start)
             articles = dbo.session.query(Article).all()
             articles_list = []
 
