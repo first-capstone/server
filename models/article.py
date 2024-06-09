@@ -82,11 +82,11 @@ class Article(Base):
         self.image_types = image_types or []
     
     @staticmethod
-    def insert_article(dbo: DBObject, token: str, title: str, content: str, is_anonymous: bool, image_urls: List[str] = None, image_types: List[ImageType] = None) -> Tuple[ResponseStatusCode, None | Detail]:
+    def insert_article(dbo: DBObject, token: str, title: str, content: str, is_anonymous: bool, image_urls: List[str] | None = None, image_types: List[ImageType] | None = None) -> Tuple[ResponseStatusCode, None | Detail]:
         try:
-            response_code, result = Account._decode_token_to_uuid(token)
-            if response_code != ResponseStatusCode.SUCCESS:
-                return (response_code, result)
+            status_code, result = Account._decode_token_to_uuid(token)
+            if status_code != ResponseStatusCode.SUCCESS:
+                return (status_code, result)
             
             article = Article(
                 art_uuid=uuid.uuid4(),
@@ -95,8 +95,8 @@ class Article(Base):
                 content=content,
                 upload_date=datetime.now(),
                 is_anonymous=is_anonymous,
-                image_urls=image_urls or [],
-                image_types=image_types or []
+                image_urls=image_urls if image_urls else [],
+                image_types=image_types if image_types else []
             )
             
             dbo.session.add(article)
@@ -166,9 +166,15 @@ class Article(Base):
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
     
     @staticmethod
-    def get_article_list(dbo: DBObject, token: str ,start: int) -> Tuple[ResponseStatusCode, list | Detail]:
+    def get_article_list(dbo: DBObject, token: str ,start: int, u_uuid: str | None = None) -> Tuple[ResponseStatusCode, list | Detail]:
         try:
-            articles = dbo.session.query(Article).all()
+            articles = []
+            if u_uuid:
+                articles = dbo.session.query(Article).filter_by(u_uuid = u_uuid).all()
+            
+            else:
+                articles = dbo.session.query(Article).all()
+            
             articles_list = []
 
             for article in articles[start: min(start + 11, len(articles))]:
@@ -208,8 +214,6 @@ class Article(Base):
         except Exception as e:
             logging.error(f"{e}: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
             return (ResponseStatusCode.INTERNAL_SERVER_ERROR, Detail(str(e)))
-
-
 
     @staticmethod
     def _load_article_from_uuid(dbo: DBObject, art_uuid: str) -> Tuple[ResponseStatusCode, Article | Detail]:

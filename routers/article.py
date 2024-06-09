@@ -55,11 +55,11 @@ if not os.path.exists(UPLOAD_DIR):
     },
     name = "게시물 조회"
 )
-async def get_articles(access_token :str, page: int = 1):
+async def get_articles(access_token :str, page: int = 1, u_uuid: str | None = None):
     if page < 1:
         return ResponseModel.show_json(ResponseStatusCode.ENTITY_ERROR.value, message = "엔티티 전달이 잘못되었습니다.", detail = "page parameter must be bigger than 0")
 
-    status_code, result = Article.get_article_list(DBObject.instance, access_token, (page - 1) * 10)
+    status_code, result = Article.get_article_list(DBObject.instance, access_token, (page - 1) * 10, u_uuid)
     if status_code == ResponseStatusCode.SUCCESS:
         return ResponseModel.show_json(ResponseStatusCode.SUCCESS.value, message = "글을 성공적으로 조회했습니다!", articles = result)
 
@@ -103,17 +103,15 @@ async def get_articles(access_token :str, page: int = 1):
     },
     name = "게시물 작성"
 )
-async def posting_article(access_token: str, title: str, content: str, is_anonymous: bool, images_files: List[UploadFile] = File(None)):
+async def posting_article(access_token: str, title: str, content: str, is_anonymous: bool, images_files: List[UploadFile] | None = File(None)):
     response_dict = {
         ResponseStatusCode.SUCCESS: "성공적으로 게시물을 적었습니다.",              
         ResponseStatusCode.FAIL: "게시물 작성에 실패하였습니다.",
-        ResponseStatusCode.ENTITY_ERROR: "입력 데이터 타입이 잘못됨",
+        ResponseStatusCode.ENTITY_ERROR: "토큰 형식이 잘못되었습니다.",
         ResponseStatusCode.INTERNAL_SERVER_ERROR: "서버 내부 에러가 발생하였습니다."
     }
-
        
-    image_urls = [] 
-
+    image_urls = []
     if images_files:
         if len(images_files) > 9:
             return ResponseModel.show_json(ResponseStatusCode.ENTITY_ERROR.value, message="이미지는 최대 9개까지 업로드 가능합니다.", detail="Too many files.")
