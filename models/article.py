@@ -1,10 +1,10 @@
-from sqlalchemy import ARRAY, Enum, String
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import Column, TEXT, DateTime, ForeignKeyConstraint, Boolean
 from models.response import ResponseStatusCode, Detail
-from database.conn import DBObject
-from sqlalchemy.orm import aliased
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import ARRAY, Enum, String
 from typing import Tuple, TypeVar, List
+from models.following import Following
+from database.conn import DBObject
 from datetime import datetime
 from .account import Account
 from models.base import Base
@@ -178,12 +178,21 @@ class Article(Base):
     @staticmethod
     def get_article_list(dbo: DBObject, token: str ,start: int, u_uuid: str | None = None) -> Tuple[ResponseStatusCode, list | Detail]:
         try:
+            status_code, result = Account._decode_token_to_uuid(token)
+            if status_code != ResponseStatusCode.SUCCESS:
+                return (status_code, result)
+            
+            status_code, result = Following.get_follow_univ_list(dbo, result)
+            if status_code != ResponseStatusCode.SUCCESS:
+                return (status_code, result)
+            
             articles = []
             if u_uuid:
                 articles = dbo.session.query(Article).filter_by(u_uuid = u_uuid).all()
             
             else:
-                articles = dbo.session.query(Article).all()
+                for u in result:
+                    articles = dbo.session.query(Article).filter_by(u_uuid = u).all()
             
             articles_list = []
 

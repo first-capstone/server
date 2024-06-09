@@ -39,6 +39,7 @@ app.openapi = custom_openapi
 app.include_router(routers.univ_router)
 app.include_router(routers.account_router)
 app.include_router(routers.article_router)
+app.include_router(routers.following_router)
 
 app.add_middleware(
     CORSMiddleware,
