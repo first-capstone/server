@@ -2,12 +2,21 @@ from models.response import ResponseStatusCode, ResponseModel
 from database.conn import DBObject
 from models.article import Article
 from models.account import Account
-from fastapi import APIRouter
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends
+from typing import List
+import os
+import shutil
+import uuid
 
 article_router = APIRouter(
     prefix="/article",
     tags=["article"]
 )
+
+UPLOAD_DIR = "images/article"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
 
 @article_router.get("",
     responses={
@@ -94,7 +103,7 @@ async def get_articles(page: int = 1):
     },
     name = "게시물 작성"
 )
-async def posting_article(access_token: str, title: str, content: str, is_anonymous: bool):
+async def posting_article(access_token: str, title: str, content: str, is_anonymous: bool, images_files: List[UploadFile] = File(None)):
     response_dict = {
         ResponseStatusCode.SUCCESS: "성공적으로 게시물을 적었습니다.",              
         ResponseStatusCode.FAIL: "게시물 작성에 실패하였습니다.",
@@ -102,7 +111,28 @@ async def posting_article(access_token: str, title: str, content: str, is_anonym
         ResponseStatusCode.INTERNAL_SERVER_ERROR: "서버 내부 에러가 발생하였습니다."
     }
 
-    status_code, result = Article.insert_article(DBObject.instance, access_token, title, content, is_anonymous)
+       
+    image_urls = [] 
+
+    if images_files:
+        if len(images_files) > 9:
+            return ResponseModel.show_json(ResponseStatusCode.ENTITY_ERROR.value, message="이미지는 최대 9개까지 업로드 가능합니다.", detail="Too many files.")
+        
+        for file in images_files:
+            file_ext = file.filename.split(".")[-1].lower()
+            if file_ext not in ["jpeg", "jpg", "png", "gif"]:
+                return ResponseModel.show_json(ResponseStatusCode.ENTITY_ERROR.value, message="지원하지 않는 파일 형식입니다.", detail="Unsupported file type.")
+            
+            file_name = f"{uuid.uuid4()}.{file_ext}"
+            file_path = os.path.join(UPLOAD_DIR, file_name)
+
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+
+            image_urls.append(file_path)
+
+
+    status_code, result = Article.insert_article(DBObject.instance, access_token, title, content, is_anonymous,image_urls=image_urls)
 
     if status_code != ResponseStatusCode.SUCCESS:
         return ResponseModel.show_json(status_code.value, message= response_dict[status_code], Detail= result.text)
@@ -154,7 +184,6 @@ async def delete_article(art_uuid: str, access_token: str):
         ResponseStatusCode.ENTITY_ERROR: "엔티티 형식이 잘못되었습니다.",
         ResponseStatusCode.INTERNAL_SERVER_ERROR: "서버 내부 오류가 발생하였습니다.",
     }
-    
     status_code, result = Account._decode_token_to_uuid(access_token)
     if status_code == ResponseStatusCode.SUCCESS:
         status_code, result = Article.delete_article(DBObject.instance, art_uuid, result)
